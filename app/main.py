@@ -12,7 +12,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 
 async def decode_image(image: Union[UploadFile, StarletteUploadFile, str, None]) -> bytes:
     if image is None:
-        raise HTTPException(status_code=400, detail="No image provided")
+        raise HTTPException(status_code=400, detail="未提供图像")
 
     if isinstance(image, (UploadFile, StarletteUploadFile)):
         return await image.read()
@@ -24,25 +24,23 @@ async def decode_image(image: Union[UploadFile, StarletteUploadFile, str, None])
                 image = image.split(',')[1]
             return base64.b64decode(image)
         except:
-            raise HTTPException(status_code=400, detail="Invalid base64 string")
+            raise HTTPException(status_code=400, detail="无效的 base64 字符串")
     else:
-        raise HTTPException(status_code=400, detail="Invalid image input")
+        raise HTTPException(status_code=400, detail="图片输入无效")
 
 
 @app.post("/ocr", response_model=APIResponse)
 async def ocr_endpoint(
         file: Optional[UploadFile] = File(None),
         image: Optional[str] = Form(None),
-        probability: bool = Form(False),
         charsets: Optional[str] = Form(None),
         png_fix: bool = Form(False)
 ):
     try:
-        if file.size == 0 and image is None:
-            return APIResponse(code=400, message="Either file or image must be provided")
-
+        if file is None and image is None:
+            return APIResponse(code=400, message="必须提供文件或图像")
         image_bytes = await decode_image(file or image)
-        result = ocr_service.ocr_classification(image_bytes, probability, charsets, png_fix)
+        result = ocr_service.ocr_classification(image_bytes, charsets, png_fix)
         return APIResponse(code=200, message="Success", data=result)
     except Exception as e:
         return APIResponse(code=500, message=str(e))
@@ -57,8 +55,8 @@ async def slide_match_endpoint(
         simple_target: bool = Form(False)
 ):
     try:
-        if (background is None and target is None) or (background_file.size == 0 and target_file.size == 0):
-            return APIResponse(code=400, message="Both target and background must be provided")
+        if (target_file is None and target is None) or (background_file is None and background is None):
+            return APIResponse(code=400, message="必须提供目标和背景")
 
         target_bytes = await decode_image(target_file or target)
         background_bytes = await decode_image(background_file or background)
@@ -74,8 +72,8 @@ async def detection_endpoint(
         image: Optional[str] = Form(None)
 ):
     try:
-        if file.size == 0 and image is None:
-            return APIResponse(code=400, message="Either file or image must be provided")
+        if file is None and image is None:
+            return APIResponse(code=400, message="必须提供文件或图像")
 
         image_bytes = await decode_image(file or image)
         bboxes = ocr_service.detection(image_bytes)

@@ -7,10 +7,18 @@ class OCRService:
         self.det = ddddocr.DdddOcr(det=True)
         self.slide = ddddocr.DdddOcr(det=False, ocr=False)
 
-    def ocr_classification(self, image: bytes, probability: bool = False, charsets: Optional[str] = None, png_fix: bool = False) -> Union[str, dict]:
+    def ocr_classification(self, image: bytes, charsets: Optional[str] = None, png_fix: bool = False) -> Union[str, dict]:
         if charsets:
+            # 如果charsets是0-7的单个数字，则转换为int类型
+            if charsets.isdigit() and 0 <= int(charsets) <= 7:
+                charsets = int(charsets)
             self.ocr.set_ranges(charsets)
-        result = self.ocr.classification(image, probability=probability, png_fix=png_fix)
+            result = self.ocr.classification(image, probability=True, png_fix=png_fix)
+            s = ""
+            for i in result['probability']:
+                s += result['charsets'][i.index(max(i))]
+            return s
+        result = self.ocr.classification(image, probability=False, png_fix=png_fix)
         return result
 
     def slide_match(self, target: bytes, background: bytes, simple_target: bool = False) -> List[int]:
